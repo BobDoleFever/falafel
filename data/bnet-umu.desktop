@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Battle.net (umu)
+Comment=Standalone, Steam-independent Battle.net launcher
+Exec=bnet-umu-gui
+Icon=bnet-umu
+Categories=Game;
+Terminal=false

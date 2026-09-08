@@ -1,0 +1,25 @@
+[project]
+name = "bnet-umu"
+version = "0.1.0"
+description = "Standalone, Steam-independent Battle.net launcher for Linux built on umu-launcher"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "PySide6>=6.5",
+]
+
+[project.scripts]
+bnet-umu = "bnet_umu.cli:main"
+
+[project.gui-scripts]
+bnet-umu-gui = "bnet_umu.gui.app:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["bnet_umu*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
