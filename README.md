@@ -33,11 +33,26 @@ risk profile.
 
 ## Install
 
+Most distros (Arch, Fedora, Debian/Ubuntu included) mark the system Python as
+"externally managed" (PEP 668), so a plain `pip install --user .` will be
+refused. Use `pipx` instead — it gives this app its own isolated venv while
+still putting its commands on your `PATH`:
+
 ```bash
-pip install --user .
+# Arch:
+sudo pacman -S --needed python-pipx
+# Fedora:
+sudo dnf install pipx
+# Debian/Ubuntu:
+sudo apt install pipx
+
+pipx install .
 ```
 
-This installs two entry points:
+If you'd rather manage the venv yourself: `python -m venv .venv && .venv/bin/pip install .`
+and add `.venv/bin` to your `PATH` (or invoke `.venv/bin/bnet-umu` directly).
+
+Either way, this installs two entry points:
 
 - `bnet-umu` — CLI (`status`, `setup`, `launch`, `repair`, `open-saves`)
 - `bnet-umu-gui` — the PySide6 GUI
