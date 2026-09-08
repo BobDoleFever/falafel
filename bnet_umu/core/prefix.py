@@ -8,7 +8,9 @@ manager and backup tools don't need to reach into the hidden prefix.
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
+from typing import Callable
 
 from .games import GameDef
 
@@ -52,6 +54,29 @@ def find_first(prefix: Path, glob_pattern: str) -> Path | None:
 
 def find_battlenet_exe(prefix: Path) -> Path | None:
     return find_first(prefix, BATTLENET_EXE_GLOB)
+
+
+def wait_for_battlenet_exe(
+    prefix: Path,
+    timeout: float = 300.0,
+    poll_interval: float = 2.0,
+    sleep_fn: Callable[[float], None] = time.sleep,
+    clock: Callable[[], float] = time.monotonic,
+) -> Path | None:
+    """Poll the filesystem for Battle.net.exe to appear.
+
+    Used instead of tracking the installer process/window lifecycle, since
+    those are less reliable signals than just checking whether the files it
+    was supposed to produce actually showed up.
+    """
+    deadline = clock() + timeout
+    while True:
+        found = find_battlenet_exe(prefix)
+        if found is not None:
+            return found
+        if clock() >= deadline:
+            return None
+        sleep_fn(poll_interval)
 
 
 def find_game_install(prefix: Path, game: GameDef) -> Path | None:

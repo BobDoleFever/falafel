@@ -98,3 +98,57 @@ def test_expose_game_folders_end_to_end(tmp_path):
     assert result["save"] is not None
     assert (external_root / "saves" / "d2r" / "profile.d2s").exists()
     assert (external_root / "installs" / "d2r" / "D2R.exe").exists()
+
+
+class _FakeClock:
+    def __init__(self):
+        self.now = 0.0
+
+    def clock(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+
+def test_wait_for_battlenet_exe_returns_immediately_if_present(tmp_path):
+    pfx = _make_fake_prefix(tmp_path)
+    clock = _FakeClock()
+
+    result = prefix.wait_for_battlenet_exe(
+        pfx, timeout=10, poll_interval=1, sleep_fn=clock.sleep, clock=clock.clock
+    )
+
+    assert result is not None
+    assert result.name == "Battle.net.exe"
+    assert clock.now == 0.0
+
+
+def test_wait_for_battlenet_exe_polls_until_it_appears(tmp_path, monkeypatch):
+    pfx = tmp_path / "prefix"
+    (pfx / "drive_c").mkdir(parents=True)
+    clock = _FakeClock()
+
+    results = iter([None, None, pfx / "drive_c" / "fake" / "Battle.net.exe"])
+    monkeypatch.setattr(prefix, "find_battlenet_exe", lambda p: next(results))
+
+    result = prefix.wait_for_battlenet_exe(
+        pfx, timeout=10, poll_interval=1, sleep_fn=clock.sleep, clock=clock.clock
+    )
+
+    assert result is not None
+    assert result.name == "Battle.net.exe"
+    assert clock.now == 2.0
+
+
+def test_wait_for_battlenet_exe_times_out_when_never_created(tmp_path):
+    pfx = tmp_path / "empty_prefix"
+    (pfx / "drive_c").mkdir(parents=True)
+    clock = _FakeClock()
+
+    result = prefix.wait_for_battlenet_exe(
+        pfx, timeout=5, poll_interval=1, sleep_fn=clock.sleep, clock=clock.clock
+    )
+
+    assert result is None
+    assert clock.now >= 5

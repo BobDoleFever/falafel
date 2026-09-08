@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Callable
 
-from . import fixups, installer, prefix, umu_bootstrap
+from . import fixups, installer, prefix, ui_automation, umu_bootstrap
 
 
 def run_setup(
@@ -30,21 +30,25 @@ def run_setup(
         log("Downloading Battle.net installer ...")
         installer.download_installer(installer_path)
 
-        log(
-            "Running installer under umu-run. Complete the install wizard "
-            "in the window that opens. If a login prompt appears, close it "
-            "instead of logging in — log in after setup finishes instead."
-        )
-        result = installer.run_installer(
+        log("Launching installer under umu-run ...")
+        installer.run_installer(
             installer_path,
             prefix=prefix_path,
             proton_path=proton_path,
             umu_bin=umu_bin,
         )
-        if result.returncode != 0:
-            log(f"Installer exited with code {result.returncode}.")
 
-    bnet_exe = prefix.find_battlenet_exe(prefix_path)
+        automated = ui_automation.automate_installer_ui(log=log)
+        if not automated:
+            log(
+                "Falling back to manual: complete the install wizard in the "
+                "window that opens, and close the login prompt instead of "
+                "logging in — log in after setup finishes instead."
+            )
+
+        log("Waiting for Battle.net to finish installing (up to 5 minutes) ...")
+        bnet_exe = prefix.wait_for_battlenet_exe(prefix_path)
+
     if bnet_exe is None:
         log(
             "Battle.net.exe not found in prefix after install — setup may "

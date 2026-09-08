@@ -30,6 +30,8 @@ risk profile.
   A system install, if present, always takes priority. umu-launcher is
   GPL-3.0-licensed; we only ever invoke it as a subprocess, and this fetches
   the official upstream binary directly rather than vendoring it in this repo.
+- Optional: `xdotool`, for hands-free setup (see below). Without it, setup
+  falls back to asking you to click through the installer manually.
 
 ## Install
 
@@ -73,9 +75,24 @@ bnet-umu repair           # clear a broken Battle.net Agent and reinstall it
 
 Or just run `bnet-umu-gui` for the same actions in a window.
 
-During the Battle.net installer, **don't log in** — close the login window
-when it appears, then log in after setup finishes. This is a known Wine
-workaround for a broken first-run auth flow.
+Battle.net-Setup.exe has no silent/unattended install flag, so `setup`
+drives its wizard for you via `xdotool` if it's installed (pressing through
+the install screens, then closing the login window it opens when done — the
+same manual "don't log in during install" Wine workaround, just automated;
+login itself is never scripted). Install `xdotool` for a hands-free run:
+
+```bash
+# Arch:
+sudo pacman -S xdotool
+# Fedora:
+sudo dnf install xdotool
+# Debian/Ubuntu:
+sudo apt install xdotool
+```
+
+Without it, `setup` falls back to asking you to click through the installer
+yourself and close the login window when it appears — log in after setup
+finishes either way.
 
 ## Where things live
 
@@ -104,10 +121,30 @@ script and community reports rather than confirmed firsthand:
 - Diablo II: Resurrected's exact save/install folder names
   (`bnet_umu/core/games.py`'s `install_glob`/`save_glob`) — confirm against a
   real install and adjust the glob if needed.
+- The installer/login window titles in
+  [`bnet_umu/core/ui_automation.py`](bnet_umu/core/ui_automation.py)
+  (`INSTALLER_WINDOW_TITLE`, `LOGIN_WINDOW_TITLE`) — if `xdotool` can't find
+  them, setup logs that and falls back to the manual flow rather than
+  hanging, but the titles themselves need confirming against a real install.
 
 Everything else (env var handling, prefix/config logic, folder exposure,
 repair) is covered by the test suite (`pytest`) and runs correctly
 independent of these details.
+
+## Possible future automation
+
+Once Battle.net is installed and you've logged in once, actually installing
+a game (Diablo II: Resurrected itself) still means clicking "Install" in the
+Battle.net library UI — not automated here. A separate tool,
+[barncastle/Battle.Net-Installer](https://github.com/barncastle/Battle.Net-Installer),
+can trigger game install/update/repair through the local Battle.net Agent by
+TACT product code (D2R's is `osi`) without touching the GUI at all, so this
+could plausibly be scripted too. Not integrated yet — its window-free CLI
+flow would need verifying under Wine (it's a self-contained ~15MB .NET 8
+exe, so it likely doesn't need a separate .NET runtime installed in the
+prefix, but that's unconfirmed), and it ships with no license file, so —
+same as umu-launcher — it'd be fetched from its own GitHub release at setup
+time rather than vendored here.
 
 ## Adding another game
 
