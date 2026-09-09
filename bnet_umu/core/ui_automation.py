@@ -1,18 +1,22 @@
-"""Best-effort automation of the Battle.net installer's UI via xdotool.
+"""Closing the Battle.net post-install login window via xdotool.
 
-Battle.net-Setup.exe has no documented silent/unattended install flag (only
-cosmetic `--lang=`/`--installpath=` args), so this drives its wizard the same
-way a human would: press the default button through the install screens,
-then close the login window it opens when done. This automates the existing
-manual workaround ("don't log in during install, close that window instead")
-— it never touches authentication itself.
+Battle.net-Setup.exe has no documented silent/unattended install flag, so a
+human still has to click through its wizard screens. This module does NOT
+attempt to automate that: live testing on real hardware showed the wizard's
+screens vary between runs (one run needed zero clicks, another showed a
+"Select a Language" screen), and the install-progress screen's only button
+is Cancel, focused by default — a blind keystroke sent at the wrong moment
+aborted an install mid-way through during testing. Driving the wizard
+without knowing which screen is actually showing is not safe.
+
+What IS safe and automated here: once the installer hands off to
+Battle.net.exe, it opens a login window that should be closed rather than
+logged into (a known Wine workaround for a broken first-run auth flow).
+That window's title is reliable and closing it is a single, low-risk action,
+so `close_login_window` polls for it and closes it automatically.
 
 Needs `xdotool` (X11/XWayland — the common case even under Wayland
-compositors, since Wine runs through XWayland today). The window titles
-below are best-effort and unverified on a real Wine prefix; if they don't
-match, every step logs what it did (or couldn't do) and returns False rather
-than hanging or guessing, so the caller can fall back to polling the
-filesystem for whether the install actually finished regardless.
+compositors, since Wine runs through XWayland today).
 """
 
 from __future__ import annotations
@@ -22,7 +26,9 @@ import subprocess
 import time
 from typing import Callable
 
-# Best-effort; verify against a real install and adjust if these don't match.
+# Confirmed against a real Battle.net install on Arch Linux (GE-Proton via
+# umu-launcher). INSTALLER_WINDOW_TITLE is intentionally unused for
+# automation (see module docstring) — kept as verified documentation.
 INSTALLER_WINDOW_TITLE = "Battle.net Setup"
 LOGIN_WINDOW_TITLE = "Battle.net Login"
 
@@ -59,75 +65,43 @@ def wait_for_window(
         sleep_fn(poll_interval)
 
 
-def wait_for_window_gone(
-    title_substring: str,
-    timeout: float = 120.0,
-    poll_interval: float = 1.0,
-    sleep_fn: Callable[[float], None] = time.sleep,
-    clock: Callable[[], float] = time.monotonic,
-) -> bool:
-    deadline = clock() + timeout
-    while True:
-        if find_window(title_substring) is None:
-            return True
-        if clock() >= deadline:
-            return False
-        sleep_fn(poll_interval)
-
-
-def press_key(window_id: str, key: str = "Return") -> None:
-    subprocess.run(["xdotool", "key", "--window", window_id, key], check=False)
-
-
 def close_window(window_id: str) -> None:
     subprocess.run(["xdotool", "windowclose", window_id], check=False)
 
 
-def automate_installer_ui(
+def close_login_window(
     log: Callable[[str], None] = print,
+    timeout: float = 60.0,
+    poll_interval: float = 1.0,
     sleep_fn: Callable[[float], None] = time.sleep,
+    clock: Callable[[], float] = time.monotonic,
 ) -> bool:
-    """Drive the installer wizard and close the login window it ends on.
+    """Poll for the Battle.net login window and close it if it appears.
 
-    Returns True if every step was confirmed; False on the first step it
-    couldn't verify. This is purely a convenience — the caller should fall
-    back to polling the filesystem for whether Battle.net actually installed
-    either way, since a False here doesn't necessarily mean install failed,
-    just that we couldn't drive/confirm the UI.
+    Returns False (without raising) if xdotool isn't installed or the window
+    never appears within `timeout` — the caller should fall back to telling
+    the user to close it themselves rather than logging in.
     """
     if not xdotool_available():
         log(
-            "xdotool not found — install it (e.g. `pacman -S xdotool`) for "
-            "hands-free setup, or complete the installer wizard yourself "
-            "(close the login window instead of logging in)."
+            "xdotool not found — install it (e.g. `pacman -S xdotool`) to "
+            "have the login window closed automatically, or close it "
+            "yourself instead of logging in."
         )
         return False
 
-    log("Waiting for the Battle.net installer window ...")
-    installer_window = wait_for_window(INSTALLER_WINDOW_TITLE, timeout=60, sleep_fn=sleep_fn)
-    if installer_window is None:
-        log(
-            "Couldn't find the installer window automatically — complete "
-            "it yourself (close the login window instead of logging in)."
-        )
-        return False
-
-    log("Installer window found — advancing through the wizard ...")
-    for _ in range(3):
-        press_key(installer_window, "Return")
-        sleep_fn(2)
-
-    log("Waiting for the install to finish ...")
-    if not wait_for_window_gone(INSTALLER_WINDOW_TITLE, timeout=300, sleep_fn=sleep_fn):
-        log("Installer window is still open after 5 minutes — check on it manually.")
-        return False
-
-    log("Waiting for the Battle.net login window to close automatically ...")
-    login_window = wait_for_window(LOGIN_WINDOW_TITLE, timeout=60, sleep_fn=sleep_fn)
+    log(
+        "Waiting for the Battle.net login window (won't log in — just "
+        "closing it, per the known Wine first-run auth workaround) ..."
+    )
+    login_window = wait_for_window(
+        LOGIN_WINDOW_TITLE, timeout=timeout, poll_interval=poll_interval,
+        sleep_fn=sleep_fn, clock=clock,
+    )
     if login_window is None:
         log(
-            "Couldn't find the login window automatically — close it "
-            "yourself instead of logging in; log in after setup finishes."
+            "Couldn't find the login window automatically — if one is open, "
+            "close it yourself instead of logging in."
         )
         return False
 

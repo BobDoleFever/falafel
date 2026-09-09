@@ -75,11 +75,18 @@ bnet-umu repair           # clear a broken Battle.net Agent and reinstall it
 
 Or just run `bnet-umu-gui` for the same actions in a window.
 
-Battle.net-Setup.exe has no silent/unattended install flag, so `setup`
-drives its wizard for you via `xdotool` if it's installed (pressing through
-the install screens, then closing the login window it opens when done — the
-same manual "don't log in during install" Wine workaround, just automated;
-login itself is never scripted). Install `xdotool` for a hands-free run:
+Battle.net-Setup.exe has no silent/unattended install flag, so you'll need
+to click through a few wizard screens yourself (language, install location).
+That part isn't automated: live testing showed the wizard's screens vary
+between runs, and the install-progress screen's only button is Cancel,
+focused by default — a blind keystroke sent at the wrong moment aborted an
+install mid-way through during testing, so driving it blind isn't safe.
+
+What `setup` *does* automate, via `xdotool` if it's installed: once the
+installer hands off to Battle.net itself, it opens a login window that
+should be closed rather than logged into (a known Wine workaround for a
+broken first-run auth flow — login itself is never scripted). `setup`
+detects and closes that window for you. Install `xdotool` for this:
 
 ```bash
 # Arch:
@@ -90,9 +97,8 @@ sudo dnf install xdotool
 sudo apt install xdotool
 ```
 
-Without it, `setup` falls back to asking you to click through the installer
-yourself and close the login window when it appears — log in after setup
-finishes either way.
+Without it, `setup` falls back to asking you to close the login window
+yourself — log in after setup finishes either way.
 
 ## Where things live
 
@@ -103,33 +109,42 @@ finishes either way.
   prefix directly.
 - App config: `~/.config/bnet-umu/config.toml`
 
-## Known-uncertain details that need verifying against a real install
+## Verified against a real install
 
-This was developed without a Linux/Wine environment to test against, so a
-few specifics are best-effort, transcribed from Lutris's Battle.net installer
-script and community reports rather than confirmed firsthand:
+These were originally best-effort, transcribed from Lutris's Battle.net
+installer script and community reports without a Linux/Wine environment to
+test against. Confirmed correct on 2026-09-08 against real `bnet-umu setup`
+runs on Arch Linux (GE-Proton via umu-launcher) — no code changes were
+needed for any of these:
 
 - The `Battle.net.config` JSON key paths in
   [`bnet_umu/core/fixups.py`](bnet_umu/core/fixups.py) (`Client.HardwareAcceleration`,
-  `Client.Sound.Enabled`, `Client.Streaming.Enabled`) — Blizzard doesn't
-  document this schema and it can change between client versions.
-  Verify against an actual `Battle.net.config` file after first install (typically
-  under `drive_c/users/steamuser/AppData/Roaming/Battle.net/`) and adjust
-  `BATTLENET_CONFIG_TWEAKS` if the keys don't match.
-- The `steamuser` Wine username assumption used to locate that config file
-  and in [`bnet_umu/core/games.py`](bnet_umu/core/games.py)'s save-folder glob.
-- Diablo II: Resurrected's exact save/install folder names
-  (`bnet_umu/core/games.py`'s `install_glob`/`save_glob`) — confirm against a
-  real install and adjust the glob if needed.
-- The installer/login window titles in
+  `Client.Sound.Enabled`, `Client.Streaming.Enabled`) match the real file at
+  `drive_c/users/steamuser/AppData/Roaming/Battle.net/Battle.net.config`
+  exactly.
+- The `steamuser` Wine username assumption holds for GE-Proton prefixes.
+- Diablo II: Resurrected's install/save glob patterns in
+  [`bnet_umu/core/games.py`](bnet_umu/core/games.py) (`Program Files (x86)/Diablo II
+  Resurrected/D2R.exe` and `users/*/Saved Games/Diablo II Resurrected`) match
+  a real install.
+- The login window title in
   [`bnet_umu/core/ui_automation.py`](bnet_umu/core/ui_automation.py)
-  (`INSTALLER_WINDOW_TITLE`, `LOGIN_WINDOW_TITLE`) — if `xdotool` can't find
-  them, setup logs that and falls back to the manual flow rather than
-  hanging, but the titles themselves need confirming against a real install.
+  (`LOGIN_WINDOW_TITLE = "Battle.net Login"`) matches and `close_login_window`
+  closes it reliably end-to-end via the real CLI. The installer wizard's own
+  window title (`INSTALLER_WINDOW_TITLE = "Battle.net Setup"`) was also
+  confirmed, but is deliberately not used to drive the wizard — see the
+  Usage section above for why.
+- A real hang bug was found and fixed in the process: `run_installer`
+  originally blocked on umu-run's whole sandbox process group, which never
+  exits because Battle.net's `Agent.exe` stays resident by design. It now
+  launches non-blocking and `prefix.wait_for_battlenet_exe` polls the
+  filesystem for completion instead.
 
-Everything else (env var handling, prefix/config logic, folder exposure,
-repair) is covered by the test suite (`pytest`) and runs correctly
-independent of these details.
+Blizzard doesn't document the `Battle.net.config` schema and it can change
+between client versions, so re-verify `BATTLENET_CONFIG_TWEAKS` if a future
+Battle.net update stops applying the tweaks. Everything else (env var
+handling, prefix/config logic, folder exposure, repair) is covered by the
+test suite (`pytest`).
 
 ## Possible future automation
 

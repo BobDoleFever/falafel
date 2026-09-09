@@ -30,7 +30,10 @@ def run_setup(
         log("Downloading Battle.net installer ...")
         installer.download_installer(installer_path)
 
-        log("Launching installer under umu-run ...")
+        log(
+            "Launching installer under umu-run. Complete the install "
+            "wizard in the window that opens."
+        )
         installer.run_installer(
             installer_path,
             prefix=prefix_path,
@@ -38,16 +41,10 @@ def run_setup(
             umu_bin=umu_bin,
         )
 
-        automated = ui_automation.automate_installer_ui(log=log)
-        if not automated:
-            log(
-                "Falling back to manual: complete the install wizard in the "
-                "window that opens, and close the login prompt instead of "
-                "logging in — log in after setup finishes instead."
-            )
-
         log("Waiting for Battle.net to finish installing (up to 5 minutes) ...")
         bnet_exe = prefix.wait_for_battlenet_exe(prefix_path)
+        if bnet_exe is not None:
+            ui_automation.close_login_window(log=log)
 
     if bnet_exe is None:
         log(

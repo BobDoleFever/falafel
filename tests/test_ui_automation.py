@@ -67,55 +67,34 @@ def test_wait_for_window_times_out(monkeypatch):
     assert clock.now >= 5
 
 
-def test_wait_for_window_gone_true_when_disappears(monkeypatch):
-    calls = iter(["1", "1", None])
-    monkeypatch.setattr(ui_automation, "find_window", lambda title: next(calls))
-    clock = FakeClock()
-
-    assert ui_automation.wait_for_window_gone(
-        "x", timeout=10, poll_interval=1, sleep_fn=clock.sleep, clock=clock.clock
-    )
-
-
-def test_wait_for_window_gone_false_on_timeout(monkeypatch):
-    monkeypatch.setattr(ui_automation, "find_window", lambda title: "still-here")
-    clock = FakeClock()
-
-    assert not ui_automation.wait_for_window_gone(
-        "x", timeout=3, poll_interval=1, sleep_fn=clock.sleep, clock=clock.clock
-    )
-
-
-def test_automate_installer_ui_returns_false_when_xdotool_missing(monkeypatch):
+def test_close_login_window_returns_false_when_xdotool_missing(monkeypatch):
     monkeypatch.setattr(ui_automation, "xdotool_available", lambda: False)
     messages = []
-    assert ui_automation.automate_installer_ui(log=messages.append) is False
+
+    result = ui_automation.close_login_window(log=messages.append)
+
+    assert result is False
     assert any("xdotool not found" in m for m in messages)
 
 
-def test_automate_installer_ui_returns_false_when_installer_window_missing(monkeypatch):
+def test_close_login_window_closes_and_returns_true_when_found(monkeypatch):
+    monkeypatch.setattr(ui_automation, "xdotool_available", lambda: True)
+    monkeypatch.setattr(ui_automation, "wait_for_window", lambda *a, **k: "login-1")
+    closed = []
+    monkeypatch.setattr(ui_automation, "close_window", lambda wid: closed.append(wid))
+
+    result = ui_automation.close_login_window(log=lambda m: None, sleep_fn=lambda s: None)
+
+    assert result is True
+    assert closed == ["login-1"]
+
+
+def test_close_login_window_returns_false_when_window_never_appears(monkeypatch):
     monkeypatch.setattr(ui_automation, "xdotool_available", lambda: True)
     monkeypatch.setattr(ui_automation, "wait_for_window", lambda *a, **k: None)
     messages = []
 
-    assert ui_automation.automate_installer_ui(log=messages.append, sleep_fn=lambda s: None) is False
-    assert any("installer window" in m for m in messages)
+    result = ui_automation.close_login_window(log=messages.append, sleep_fn=lambda s: None)
 
-
-def test_automate_installer_ui_full_happy_path(monkeypatch):
-    monkeypatch.setattr(ui_automation, "xdotool_available", lambda: True)
-
-    windows = iter(["installer-1", "login-1"])
-    monkeypatch.setattr(ui_automation, "wait_for_window", lambda *a, **k: next(windows))
-    monkeypatch.setattr(ui_automation, "wait_for_window_gone", lambda *a, **k: True)
-
-    pressed = []
-    closed = []
-    monkeypatch.setattr(ui_automation, "press_key", lambda wid, key="Return": pressed.append(wid))
-    monkeypatch.setattr(ui_automation, "close_window", lambda wid: closed.append(wid))
-
-    result = ui_automation.automate_installer_ui(log=lambda m: None, sleep_fn=lambda s: None)
-
-    assert result is True
-    assert pressed == ["installer-1"] * 3
-    assert closed == ["login-1"]
+    assert result is False
+    assert any("Couldn't find the login window" in m for m in messages)
