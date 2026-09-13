@@ -100,6 +100,15 @@ sudo apt install xdotool
 Without it, `setup` falls back to asking you to close the login window
 yourself — log in after setup finishes either way.
 
+`bnet-umu launch` also wraps the session in `systemd-inhibit --what=idle:sleep`
+(present by default on any systemd distro) so the screen doesn't dim/blank
+or the machine sleep mid-game the way an idle desktop would — Steam does
+this for you normally, but a standalone Wine launch doesn't get that for
+free. Held for the whole session (Battle.net plus whatever game it launches,
+since they share the same umu-run process tree) and released automatically
+when you quit. Falls back to no inhibition if `systemd-inhibit` isn't
+available.
+
 ## Where things live
 
 - Prefix: `~/.local/share/bnet-umu/prefix` (override in Settings / config)

@@ -51,3 +51,57 @@ def test_base_env_is_preserved_alongside_additions():
     )
     assert inv.env["PATH"] == "/usr/bin"
     assert inv.env["WINEPREFIX"] == "/tmp/prefix"
+
+
+def test_wrap_with_inhibit_prefixes_systemd_inhibit(monkeypatch):
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/systemd-inhibit")
+    result = umu_runner.wrap_with_inhibit(["umu-run", "Battle.net.exe"], reason="testing")
+    assert result == [
+        "/usr/bin/systemd-inhibit",
+        "--what=idle:sleep",
+        "--why=testing",
+        "--",
+        "umu-run",
+        "Battle.net.exe",
+    ]
+
+
+def test_wrap_with_inhibit_falls_back_when_missing(monkeypatch):
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    argv = ["umu-run", "Battle.net.exe"]
+    assert umu_runner.wrap_with_inhibit(argv) is argv
+
+
+def test_run_background_wraps_argv_when_inhibit_idle(monkeypatch):
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/systemd-inhibit")
+    captured = {}
+
+    class FakePopen:
+        def __init__(self, argv, env):
+            captured["argv"] = argv
+            captured["env"] = env
+
+    monkeypatch.setattr("subprocess.Popen", FakePopen)
+
+    inv = umu_runner.UmuInvocation(argv=["umu-run", "Battle.net.exe"], env={"X": "1"})
+    umu_runner.run(inv, background=True, inhibit_idle=True)
+
+    assert captured["argv"][0] == "/usr/bin/systemd-inhibit"
+    assert captured["argv"][-2:] == ["umu-run", "Battle.net.exe"]
+    assert captured["env"] == {"X": "1"}
+
+
+def test_run_background_does_not_wrap_by_default(monkeypatch):
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/systemd-inhibit")
+    captured = {}
+
+    class FakePopen:
+        def __init__(self, argv, env):
+            captured["argv"] = argv
+
+    monkeypatch.setattr("subprocess.Popen", FakePopen)
+
+    inv = umu_runner.UmuInvocation(argv=["umu-run", "Battle.net.exe"], env={})
+    umu_runner.run(inv, background=True)
+
+    assert captured["argv"] == ["umu-run", "Battle.net.exe"]

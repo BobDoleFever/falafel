@@ -62,7 +62,7 @@ def cmd_launch(args: argparse.Namespace) -> int:
         store="battlenet",
         umu_bin=umu_bin,
     )
-    umu_runner.run(invocation, background=True)
+    umu_runner.run(invocation, background=True, inhibit_idle=True)
 
     for game in GAMES.values():
         try:
