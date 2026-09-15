@@ -71,6 +71,7 @@ bnet-umu launch          # launch Battle.net; install Diablo II: Resurrected
                           # from inside the Battle.net client itself
 bnet-umu open-saves d2r  # open the exposed save folder in your file manager
 bnet-umu repair           # clear a broken Battle.net Agent and reinstall it
+bnet-umu add-to-steam    # add as a Non-Steam Game shortcut (see below)
 ```
 
 Or just run `bnet-umu-gui` for the same actions in a window.
@@ -129,6 +130,30 @@ device passes straight through umu-launcher's sandbox into the Wine prefix,
 so Battle.net/D2R see it exactly like any other Linux gamepad. Since
 bnet-umu never touches the physical controller, this can't conflict with
 Steam's own use of it for other games.
+
+## Adding to your Steam library
+
+```bash
+bnet-umu add-to-steam --name "Battle.net" --icon /path/to/logo.png
+```
+
+Adds a Non-Steam Game shortcut so it shows up as a library tile like any
+other game — `--name`/`--icon` are both optional (name defaults to
+`Battle.net`; without `--icon` it just has no custom artwork). Safe to
+rerun any time (e.g. to change the name or icon later): it matches on the
+shortcut's target path and updates that entry in place instead of creating
+a duplicate. Your existing non-Steam shortcuts are left exactly as they
+are — the whole file is parsed and only the one matching entry is touched,
+with a timestamped backup written next to `shortcuts.vdf` before every
+write. **Restart Steam afterward** (it only reads this file at startup, so
+it won't notice the change while already running, and could overwrite it
+with its own stale copy if you add/edit another shortcut through Steam's
+own UI before restarting).
+
+The shortcut points at `bnet-umu` itself (running `launch`), not at
+Battle.net.exe directly — pointing at the Windows exe would make Steam
+apply its own Proton translation and create a *second*, separate prefix
+under `steamapps/compatdata/` instead of reusing the one this tool manages.
 
 ## Where things live
 

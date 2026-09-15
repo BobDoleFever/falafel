@@ -6,9 +6,10 @@ import argparse
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 from . import config as config_module
-from .core import controller, prefix, umu_bootstrap, umu_runner
+from .core import controller, prefix, steam_shortcut, umu_bootstrap, umu_runner
 from .core.games import GAMES
 from .core.repair import repair as run_repair
 from .core.setup_flow import run_setup
@@ -83,6 +84,39 @@ def cmd_launch(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_add_to_steam(args: argparse.Namespace) -> int:
+    launcher = shutil.which("bnet-umu") or sys.argv[0]
+    launcher_path = Path(launcher).resolve()
+
+    if args.icon and not Path(args.icon).is_file():
+        print(f"Icon file not found: {args.icon}", file=sys.stderr)
+        return 1
+
+    try:
+        result = steam_shortcut.add_shortcut(
+            exe=str(launcher_path),
+            app_name=args.name,
+            start_dir=str(launcher_path.parent),
+            launch_options="launch",
+            icon=args.icon or "",
+        )
+    except FileNotFoundError as exc:
+        print(f"Couldn't find your Steam userdata directory: {exc}", file=sys.stderr)
+        return 1
+
+    verb = "Updated" if result.was_update else "Added"
+    print(f'{verb} "{args.name}" as a Steam shortcut (launches via `bnet-umu launch`).')
+    if result.backup_path:
+        print(f"Backed up the previous shortcuts.vdf to {result.backup_path}")
+    if args.icon:
+        print("Set as the shortcut's icon and library artwork.")
+    print(
+        "Restart Steam to see it (Steam > Exit, then reopen) — "
+        "it won't pick up the change while already running."
+    )
+    return 0
+
+
 def cmd_repair(args: argparse.Namespace) -> int:
     cfg = config_module.load()
     removed = run_repair(cfg.prefix_path)
@@ -128,6 +162,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     open_saves.add_argument("game", nargs="?", default="d2r", choices=list(GAMES.keys()))
     open_saves.set_defaults(func=cmd_open_saves)
+
+    add_to_steam = subparsers.add_parser(
+        "add-to-steam", help="Add this as a Non-Steam Game shortcut in Steam"
+    )
+    add_to_steam.add_argument(
+        "--name", default="Battle.net", help="Display name in Steam (default: Battle.net)"
+    )
+    add_to_steam.add_argument(
+        "--icon", default=None, help="Path to an icon/logo image file to use"
+    )
+    add_to_steam.set_defaults(func=cmd_add_to_steam)
 
     return parser
 
