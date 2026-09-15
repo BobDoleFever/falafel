@@ -109,6 +109,27 @@ since they share the same umu-run process tree) and released automatically
 when you quit. Falls back to no inhibition if `systemd-inhibit` isn't
 available.
 
+## Controller support (Steam Controller, etc.)
+
+No extra setup or code path needed here — just keep Steam running in the
+background (it doesn't need to be doing anything, just running) with your
+controller connected. `bnet-umu status` reports whether a controller is
+currently visible.
+
+The mechanism: Steam keeps exclusive access to the raw physical controller
+while it's running (which is why a separate standalone driver would fight
+with Steam), but that's not the same thing as the gamepad a game actually
+reads. Steam Input translates the raw device into a standard "Microsoft
+X-Box 360 pad" exposed system-wide via `uinput` — visible to any process on
+the system, not just Steam-launched ones — for a real Steam Controller
+automatically, or for Xbox/PlayStation/Switch Pro/generic controllers if
+"Enable Steam Input for ... controllers" is on in Steam's own Controller
+settings (on by default in current Steam). Confirmed live that this virtual
+device passes straight through umu-launcher's sandbox into the Wine prefix,
+so Battle.net/D2R see it exactly like any other Linux gamepad. Since
+bnet-umu never touches the physical controller, this can't conflict with
+Steam's own use of it for other games.
+
 ## Where things live
 
 - Prefix: `~/.local/share/bnet-umu/prefix` (override in Settings / config)

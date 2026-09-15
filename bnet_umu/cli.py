@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 from . import config as config_module
-from .core import prefix, umu_bootstrap, umu_runner
+from .core import controller, prefix, umu_bootstrap, umu_runner
 from .core.games import GAMES
 from .core.repair import repair as run_repair
 from .core.setup_flow import run_setup
@@ -33,6 +33,17 @@ def cmd_status(args: argparse.Namespace) -> int:
     for game in GAMES.values():
         installed = prefix.find_game_install(cfg.prefix_path, game) is not None
         print(f"{game.name} detected: {'yes' if installed else 'no'}")
+
+    gamepad = controller.find_virtual_gamepad()
+    if gamepad:
+        print(f"Controller: {gamepad} detected (via Steam Input)")
+    else:
+        print(
+            "Controller: none detected — for gamepad support, keep Steam "
+            "running in the background with the controller connected "
+            "(bnet-umu reads Steam Input's shared virtual gamepad, same as "
+            "any other app; it never touches the controller directly)"
+        )
     return 0
 
 
