@@ -1,4 +1,4 @@
-"""Registry of Blizzard games supported by bnet-umu.
+"""Registry of Blizzard games supported by falafel.
 
 Each entry describes how to find a game's install and save data inside the
 Battle.net Wine prefix, keyed by glob patterns rather than fixed paths since

@@ -1,4 +1,4 @@
-"""App configuration: ~/.config/bnet-umu/config.toml.
+"""App configuration: ~/.config/falafel/config.toml.
 
 Reads with stdlib `tomllib` (Python 3.11+, read-only) and writes with a small
 hand-rolled serializer, since our schema is simple (top-level scalars plus one
@@ -18,7 +18,7 @@ CONFIG_FILENAME = "config.toml"
 
 
 def default_config_path() -> Path:
-    return xdg_config_home() / "bnet-umu" / CONFIG_FILENAME
+    return xdg_config_home() / "falafel" / CONFIG_FILENAME
 
 
 @dataclass

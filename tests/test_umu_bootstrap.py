@@ -3,7 +3,7 @@ import stat
 import tarfile
 from pathlib import Path
 
-from bnet_umu.core import umu_bootstrap
+from falafel.core import umu_bootstrap
 
 
 def _make_fake_zipapp_tar(tar_path: Path, tmp_path: Path) -> None:

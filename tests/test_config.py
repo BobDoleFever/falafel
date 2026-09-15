@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from bnet_umu import config as config_module
+from falafel import config as config_module
 
 
 def test_load_returns_defaults_when_missing(tmp_path):
@@ -12,7 +12,7 @@ def test_load_returns_defaults_when_missing(tmp_path):
 def test_save_then_load_round_trips(tmp_path):
     path = tmp_path / "config.toml"
     cfg = config_module.AppConfig(
-        prefix_path=Path("/home/user/.local/share/bnet-umu/prefix"),
+        prefix_path=Path("/home/user/.local/share/falafel/prefix"),
         external_root=Path("/home/user/Games/battlenet"),
         proton_path="GE-Proton9-5",
         installed={"d2r": True},

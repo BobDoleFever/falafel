@@ -1,6 +1,6 @@
 import pytest
 
-from bnet_umu.core import steam_vdf
+from falafel.core import steam_vdf
 
 
 def test_round_trips_nested_structure():

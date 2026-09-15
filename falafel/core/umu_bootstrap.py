@@ -33,7 +33,7 @@ UMU_RUN_BIN = "umu-run"
 
 
 def bootstrap_dir() -> Path:
-    return xdg_data_home() / "bnet-umu" / "umu"
+    return xdg_data_home() / "falafel" / "umu"
 
 
 def bundled_umu_run_path() -> Path:

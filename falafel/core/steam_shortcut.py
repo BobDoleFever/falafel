@@ -1,6 +1,6 @@
-"""Adding bnet-umu to Steam's library as a "Non-Steam Game" shortcut.
+"""Adding falafel to Steam's library as a "Non-Steam Game" shortcut.
 
-Points the shortcut at bnet-umu's own launcher (not at Battle.net.exe
+Points the shortcut at falafel's own launcher (not at Battle.net.exe
 directly) so Steam just runs a native Linux executable and never applies
 its own Proton translation — which matters, because if Exe pointed at the
 Windows exe, Steam would create and use a *separate* Proton prefix under
@@ -155,6 +155,40 @@ def add_shortcut(
         appid=appid,
         was_update=was_update,
     )
+
+
+def remove_shortcut(exe: str, *, steam_root: Path | None = None) -> Path | None:
+    """Remove the shortcut entry matching this Exe path, if any.
+
+    Renumbers the remaining entries to stay sequential ("0", "1", ...),
+    matching the shape Steam's own UI produces. Writes a timestamped backup
+    first, same as add_shortcut. Returns the backup path if an entry was
+    actually removed, or None if there was nothing to remove (no
+    shortcuts.vdf, or no entry with this Exe).
+    """
+    config_dir = find_userdata_config_dir(steam_root)
+    shortcuts_path = config_dir / "shortcuts.vdf"
+    if not shortcuts_path.exists():
+        return None
+
+    root = steam_vdf.loads(shortcuts_path.read_bytes())
+    shortcuts = root.get("shortcuts", {})
+    exe_quoted = f'"{exe}"'
+    remaining = [entry for entry in shortcuts.values() if entry.get("Exe") != exe_quoted]
+    if len(remaining) == len(shortcuts):
+        return None
+
+    root["shortcuts"] = {str(i): entry for i, entry in enumerate(remaining)}
+
+    backup_path = shortcuts_path.with_name(f"shortcuts.vdf.bak.{time.strftime('%Y%m%d-%H%M%S')}")
+    shutil.copy2(shortcuts_path, backup_path)
+    shortcuts_path.write_bytes(steam_vdf.dumps(root))
+
+    verify = steam_vdf.loads(shortcuts_path.read_bytes())
+    if any(entry.get("Exe") == exe_quoted for entry in verify.get("shortcuts", {}).values()):
+        raise RuntimeError("shortcuts.vdf write did not verify correctly after removing entry")
+
+    return backup_path
 
 
 def _write_grid_art(config_dir: Path, appid: int, icon_path: Path) -> None:

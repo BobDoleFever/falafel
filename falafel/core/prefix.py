@@ -32,11 +32,31 @@ def xdg_config_home() -> Path:
 
 
 def default_prefix_path() -> Path:
-    return xdg_data_home() / "bnet-umu" / "prefix"
+    return xdg_data_home() / "falafel" / "prefix"
 
 
 def default_external_root() -> Path:
     return Path.home() / "Games" / "battlenet"
+
+
+def migrate_legacy_data_dir(log: Callable[[str], None] = lambda _msg: None) -> None:
+    """One-time migration from this project's original name, bnet-umu.
+
+    Moves ~/.local/share/bnet-umu -> ~/.local/share/falafel (and the config
+    dir equivalent) so an existing prefix, saves, and bootstrapped umu-run
+    survive the rename instead of being orphaned. No-ops once migrated (or
+    if there was never a bnet-umu install here), so safe to call
+    unconditionally on every run.
+    """
+    _migrate_dir(xdg_data_home() / "bnet-umu", xdg_data_home() / "falafel", log)
+    _migrate_dir(xdg_config_home() / "bnet-umu", xdg_config_home() / "falafel", log)
+
+
+def _migrate_dir(old: Path, new: Path, log: Callable[[str], None]) -> None:
+    if old.is_dir() and not new.exists():
+        new.parent.mkdir(parents=True, exist_ok=True)
+        old.rename(new)
+        log(f"Migrated {old} -> {new} (this project was renamed from bnet-umu to falafel)")
 
 
 def drive_c(prefix: Path) -> Path:

@@ -1,6 +1,6 @@
 import json
 
-from bnet_umu.core.fixups import (
+from falafel.core.fixups import (
     WINE_DLL_OVERRIDES,
     apply_battlenet_config_tweaks,
 )

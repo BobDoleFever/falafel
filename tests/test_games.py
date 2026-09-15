@@ -1,4 +1,4 @@
-from bnet_umu.core.games import GAMES, get_game
+from falafel.core.games import GAMES, get_game
 
 
 def test_d2r_registered():

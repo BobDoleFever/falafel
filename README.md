@@ -1,6 +1,6 @@
-# bnet-umu
+# falafel
 
-A standalone, Steam-independent Battle.net launcher for Linux, built on
+**falafel** is a standalone, Steam-independent Battle.net launcher for Linux, built on
 [umu-launcher](https://github.com/Open-Wine-Components/umu-launcher). Manages
 a dedicated Wine prefix for Battle.net, applies known Wine compatibility
 tweaks, exposes save/install folders at normal host paths, and gives one-click
@@ -23,10 +23,10 @@ risk profile.
 
 - Python 3.11+.
 - That's it for umu-launcher: if `umu-run` isn't already on your `PATH`
-  (distro package, AUR, etc.), `bnet-umu setup` downloads a self-contained
+  (distro package, AUR, etc.), `falafel setup` downloads a self-contained
   copy automatically from
   [umu-launcher's GitHub releases](https://github.com/Open-Wine-Components/umu-launcher/releases)
-  (the `-zipapp.tar` asset) into `~/.local/share/bnet-umu/umu/` and uses that.
+  (the `-zipapp.tar` asset) into `~/.local/share/falafel/umu/` and uses that.
   A system install, if present, always takes priority. umu-launcher is
   GPL-3.0-licensed; we only ever invoke it as a subprocess, and this fetches
   the official upstream binary directly rather than vendoring it in this repo.
@@ -52,29 +52,29 @@ pipx install .
 ```
 
 If you'd rather manage the venv yourself: `python -m venv .venv && .venv/bin/pip install .`
-and add `.venv/bin` to your `PATH` (or invoke `.venv/bin/bnet-umu` directly).
+and add `.venv/bin` to your `PATH` (or invoke `.venv/bin/falafel` directly).
 
 Either way, this installs two entry points:
 
-- `bnet-umu` — CLI (`status`, `setup`, `launch`, `repair`, `open-saves`)
-- `bnet-umu-gui` — the PySide6 GUI
+- `falafel` — CLI (`status`, `setup`, `launch`, `repair`, `open-saves`)
+- `falafel-gui` — the PySide6 GUI
 
-Optionally copy `data/bnet-umu.desktop` and `data/icon.svg` into your
+Optionally copy `data/falafel.desktop` and `data/icon.svg` into your
 `~/.local/share/applications` and icon theme so it shows up in your app menu.
 
 ## Usage
 
 ```bash
-bnet-umu status        # show prefix / install state
-bnet-umu setup          # create the prefix and install Battle.net
-bnet-umu launch          # launch Battle.net; install Diablo II: Resurrected
+falafel status        # show prefix / install state
+falafel setup          # create the prefix and install Battle.net
+falafel launch          # launch Battle.net; install Diablo II: Resurrected
                           # from inside the Battle.net client itself
-bnet-umu open-saves d2r  # open the exposed save folder in your file manager
-bnet-umu repair           # clear a broken Battle.net Agent and reinstall it
-bnet-umu add-to-steam    # add as a Non-Steam Game shortcut (see below)
+falafel open-saves d2r  # open the exposed save folder in your file manager
+falafel repair           # clear a broken Battle.net Agent and reinstall it
+falafel add-to-steam    # add as a Non-Steam Game shortcut (see below)
 ```
 
-Or just run `bnet-umu-gui` for the same actions in a window.
+Or just run `falafel-gui` for the same actions in a window.
 
 Battle.net-Setup.exe has no silent/unattended install flag, so you'll need
 to click through a few wizard screens yourself (language, install location).
@@ -101,7 +101,7 @@ sudo apt install xdotool
 Without it, `setup` falls back to asking you to close the login window
 yourself — log in after setup finishes either way.
 
-`bnet-umu launch` also wraps the session in `systemd-inhibit --what=idle:sleep`
+`falafel launch` also wraps the session in `systemd-inhibit --what=idle:sleep`
 (present by default on any systemd distro) so the screen doesn't dim/blank
 or the machine sleep mid-game the way an idle desktop would — Steam does
 this for you normally, but a standalone Wine launch doesn't get that for
@@ -114,7 +114,7 @@ available.
 
 No extra setup or code path needed here — just keep Steam running in the
 background (it doesn't need to be doing anything, just running) with your
-controller connected. `bnet-umu status` reports whether a controller is
+controller connected. `falafel status` reports whether a controller is
 currently visible.
 
 The mechanism: Steam keeps exclusive access to the raw physical controller
@@ -128,13 +128,13 @@ automatically, or for Xbox/PlayStation/Switch Pro/generic controllers if
 settings (on by default in current Steam). Confirmed live that this virtual
 device passes straight through umu-launcher's sandbox into the Wine prefix,
 so Battle.net/D2R see it exactly like any other Linux gamepad. Since
-bnet-umu never touches the physical controller, this can't conflict with
+falafel never touches the physical controller, this can't conflict with
 Steam's own use of it for other games.
 
 ## Adding to your Steam library
 
 ```bash
-bnet-umu add-to-steam --name "Battle.net" --icon /path/to/logo.png
+falafel add-to-steam --name "Battle.net" --icon /path/to/logo.png
 ```
 
 Adds a Non-Steam Game shortcut so it shows up as a library tile like any
@@ -150,40 +150,49 @@ it won't notice the change while already running, and could overwrite it
 with its own stale copy if you add/edit another shortcut through Steam's
 own UI before restarting).
 
-The shortcut points at `bnet-umu` itself (running `launch`), not at
+The shortcut points at `falafel` itself (running `launch`), not at
 Battle.net.exe directly — pointing at the Windows exe would make Steam
 apply its own Proton translation and create a *second*, separate prefix
 under `steamapps/compatdata/` instead of reusing the one this tool manages.
 
 ## Where things live
 
-- Prefix: `~/.local/share/bnet-umu/prefix` (override in Settings / config)
+- Prefix: `~/.local/share/falafel/prefix` (override in Settings / config)
 - Exposed folders: `~/Games/battlenet/saves/<game>` and
   `~/Games/battlenet/installs/<game>` — symlinks into the prefix, so your
   file manager and backup tools can reach them without opening the hidden
   prefix directly.
-- App config: `~/.config/bnet-umu/config.toml`
+- App config: `~/.config/falafel/config.toml`
+
+This project was originally scaffolded under the working name `bnet-umu`.
+If you have an existing `~/.local/share/bnet-umu` and/or
+`~/.config/bnet-umu` from before the rename, both `falafel` and
+`falafel-gui` migrate them automatically (a one-time move to the paths
+above) the first time you run either — your prefix, saves, and
+bootstrapped `umu-run` carry over rather than getting orphaned. Safe to
+run repeatedly; it only acts once and leaves things alone if the new
+paths already exist.
 
 ## Verified against a real install
 
 These were originally best-effort, transcribed from Lutris's Battle.net
 installer script and community reports without a Linux/Wine environment to
-test against. Confirmed correct on 2026-09-08 against real `bnet-umu setup`
+test against. Confirmed correct on 2026-09-08 against real `falafel setup`
 runs on Arch Linux (GE-Proton via umu-launcher) — no code changes were
 needed for any of these:
 
 - The `Battle.net.config` JSON key paths in
-  [`bnet_umu/core/fixups.py`](bnet_umu/core/fixups.py) (`Client.HardwareAcceleration`,
+  [`falafel/core/fixups.py`](falafel/core/fixups.py) (`Client.HardwareAcceleration`,
   `Client.Sound.Enabled`, `Client.Streaming.Enabled`) match the real file at
   `drive_c/users/steamuser/AppData/Roaming/Battle.net/Battle.net.config`
   exactly.
 - The `steamuser` Wine username assumption holds for GE-Proton prefixes.
 - Diablo II: Resurrected's install/save glob patterns in
-  [`bnet_umu/core/games.py`](bnet_umu/core/games.py) (`Program Files (x86)/Diablo II
+  [`falafel/core/games.py`](falafel/core/games.py) (`Program Files (x86)/Diablo II
   Resurrected/D2R.exe` and `users/*/Saved Games/Diablo II Resurrected`) match
   a real install.
 - The login window title in
-  [`bnet_umu/core/ui_automation.py`](bnet_umu/core/ui_automation.py)
+  [`falafel/core/ui_automation.py`](falafel/core/ui_automation.py)
   (`LOGIN_WINDOW_TITLE = "Battle.net Login"`) matches and `close_login_window`
   closes it reliably end-to-end via the real CLI. The installer wizard's own
   window title (`INSTALLER_WINDOW_TITLE = "Battle.net Setup"`) was also
@@ -219,5 +228,5 @@ time rather than vendored here.
 ## Adding another game
 
 Add an entry to `GAMES` in
-[`bnet_umu/core/games.py`](bnet_umu/core/games.py) with its install/save glob
+[`falafel/core/games.py`](falafel/core/games.py) with its install/save glob
 patterns — the setup/launch/repair/folder-exposure logic is game-agnostic.

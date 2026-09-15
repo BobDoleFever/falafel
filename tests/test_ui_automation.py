@@ -1,6 +1,6 @@
 import subprocess
 
-from bnet_umu.core import ui_automation
+from falafel.core import ui_automation
 
 
 class FakeClock:

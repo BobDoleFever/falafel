@@ -1,4 +1,4 @@
-"""CLI entry point (`bnet-umu`), sharing the same core/ as the GUI."""
+"""CLI entry point (`falafel`), sharing the same core/ as the GUI."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(
             "Controller: none detected — for gamepad support, keep Steam "
             "running in the background with the controller connected "
-            "(bnet-umu reads Steam Input's shared virtual gamepad, same as "
+            "(falafel reads Steam Input's shared virtual gamepad, same as "
             "any other app; it never touches the controller directly)"
         )
     return 0
@@ -54,7 +54,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
     if not ok:
         return 1
 
-    print("Run `bnet-umu launch` to start Battle.net.")
+    print("Run `falafel launch` to start Battle.net.")
     return 0
 
 
@@ -62,7 +62,7 @@ def cmd_launch(args: argparse.Namespace) -> int:
     cfg = config_module.load()
     bnet_exe = prefix.find_battlenet_exe(cfg.prefix_path)
     if bnet_exe is None:
-        print("Battle.net isn't installed yet — run `bnet-umu setup` first.", file=sys.stderr)
+        print("Battle.net isn't installed yet — run `falafel setup` first.", file=sys.stderr)
         return 1
 
     umu_bin = umu_bootstrap.ensure_umu_run(log=print)
@@ -85,7 +85,7 @@ def cmd_launch(args: argparse.Namespace) -> int:
 
 
 def cmd_add_to_steam(args: argparse.Namespace) -> int:
-    launcher = shutil.which("bnet-umu") or sys.argv[0]
+    launcher = shutil.which("falafel") or sys.argv[0]
     launcher_path = Path(launcher).resolve()
 
     if args.icon and not Path(args.icon).is_file():
@@ -105,7 +105,7 @@ def cmd_add_to_steam(args: argparse.Namespace) -> int:
         return 1
 
     verb = "Updated" if result.was_update else "Added"
-    print(f'{verb} "{args.name}" as a Steam shortcut (launches via `bnet-umu launch`).')
+    print(f'{verb} "{args.name}" as a Steam shortcut (launches via `falafel launch`).')
     if result.backup_path:
         print(f"Backed up the previous shortcuts.vdf to {result.backup_path}")
     if args.icon:
@@ -143,7 +143,7 @@ def cmd_open_saves(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="bnet-umu")
+    parser = argparse.ArgumentParser(prog="falafel")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("status", help="Show prefix and install status").set_defaults(
@@ -180,6 +180,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    prefix.migrate_legacy_data_dir(log=print)
     return args.func(args)
 
 

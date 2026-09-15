@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from bnet_umu.core import controller
+from falafel.core import controller
 
 
 def test_find_virtual_gamepad_detects_steam_input_device(tmp_path):

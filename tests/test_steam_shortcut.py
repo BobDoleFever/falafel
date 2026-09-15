@@ -1,4 +1,4 @@
-from bnet_umu.core import steam_shortcut, steam_vdf
+from falafel.core import steam_shortcut, steam_vdf
 
 
 def _make_userdata(tmp_path):
@@ -25,7 +25,7 @@ def test_add_shortcut_creates_file_with_one_entry(tmp_path):
     steam_root, config_dir = _make_userdata(tmp_path)
 
     result = steam_shortcut.add_shortcut(
-        exe="/home/user/.local/bin/bnet-umu",
+        exe="/home/user/.local/bin/falafel",
         app_name="Battle.net",
         start_dir="/home/user/.local/bin",
         launch_options="launch",
@@ -37,7 +37,7 @@ def test_add_shortcut_creates_file_with_one_entry(tmp_path):
     root = steam_vdf.loads(result.shortcuts_path.read_bytes())
     entry = root["shortcuts"]["0"]
     assert entry["AppName"] == "Battle.net"
-    assert entry["Exe"] == '"/home/user/.local/bin/bnet-umu"'
+    assert entry["Exe"] == '"/home/user/.local/bin/falafel"'
     assert entry["LaunchOptions"] == "launch"
     assert entry["appid"] == result.appid
 
@@ -60,7 +60,7 @@ def test_add_shortcut_preserves_existing_unrelated_entries(tmp_path):
     (config_dir / "shortcuts.vdf").write_bytes(steam_vdf.dumps(existing))
 
     steam_shortcut.add_shortcut(
-        exe="/home/user/.local/bin/bnet-umu",
+        exe="/home/user/.local/bin/falafel",
         app_name="Battle.net",
         start_dir="/home/user/.local/bin",
         steam_root=steam_root,
@@ -77,13 +77,13 @@ def test_add_shortcut_is_idempotent_by_exe_path(tmp_path):
     steam_root, config_dir = _make_userdata(tmp_path)
 
     steam_shortcut.add_shortcut(
-        exe="/home/user/.local/bin/bnet-umu",
+        exe="/home/user/.local/bin/falafel",
         app_name="Battle.net",
         start_dir="/home/user/.local/bin",
         steam_root=steam_root,
     )
     result = steam_shortcut.add_shortcut(
-        exe="/home/user/.local/bin/bnet-umu",
+        exe="/home/user/.local/bin/falafel",
         app_name="Battle.net (renamed)",
         start_dir="/home/user/.local/bin",
         steam_root=steam_root,
@@ -100,7 +100,7 @@ def test_add_shortcut_backs_up_existing_file_before_writing(tmp_path):
     (config_dir / "shortcuts.vdf").write_bytes(steam_vdf.dumps({"shortcuts": {}}))
 
     result = steam_shortcut.add_shortcut(
-        exe="/home/user/.local/bin/bnet-umu",
+        exe="/home/user/.local/bin/falafel",
         app_name="Battle.net",
         start_dir="/home/user/.local/bin",
         steam_root=steam_root,
@@ -117,7 +117,7 @@ def test_add_shortcut_writes_icon_field_and_grid_art(tmp_path):
     icon_path.write_bytes(b"fake-png-bytes")
 
     result = steam_shortcut.add_shortcut(
-        exe="/home/user/.local/bin/bnet-umu",
+        exe="/home/user/.local/bin/falafel",
         app_name="Battle.net",
         start_dir="/home/user/.local/bin",
         icon=str(icon_path),
@@ -131,3 +131,44 @@ def test_add_shortcut_writes_icon_field_and_grid_art(tmp_path):
     written = {p.name for p in grid_dir.iterdir()}
     assert f"{result.appid}.png" in written
     assert f"{result.appid}_icon.png" in written
+
+
+def test_remove_shortcut_removes_matching_entry_and_renumbers(tmp_path):
+    steam_root, config_dir = _make_userdata(tmp_path)
+    existing = {
+        "shortcuts": {
+            "0": {"appid": 1, "AppName": "Keep Me", "Exe": '"/keep/me"', "tags": {}},
+            "1": {"appid": 2, "AppName": "Remove Me", "Exe": '"/remove/me"', "tags": {}},
+            "2": {"appid": 3, "AppName": "Keep Me Too", "Exe": '"/keep/too"', "tags": {}},
+        },
+    }
+    (config_dir / "shortcuts.vdf").write_bytes(steam_vdf.dumps(existing))
+
+    backup_path = steam_shortcut.remove_shortcut("/remove/me", steam_root=steam_root)
+
+    assert backup_path is not None and backup_path.exists()
+    root = steam_vdf.loads((config_dir / "shortcuts.vdf").read_bytes())
+    names = {entry["AppName"] for entry in root["shortcuts"].values()}
+    assert names == {"Keep Me", "Keep Me Too"}
+    assert set(root["shortcuts"].keys()) == {"0", "1"}
+
+
+def test_remove_shortcut_returns_none_when_no_match(tmp_path):
+    steam_root, config_dir = _make_userdata(tmp_path)
+    existing = {
+        "shortcuts": {
+            "0": {"appid": 1, "AppName": "Keep Me", "Exe": '"/keep/me"', "tags": {}},
+        },
+    }
+    (config_dir / "shortcuts.vdf").write_bytes(steam_vdf.dumps(existing))
+
+    result = steam_shortcut.remove_shortcut("/not/there", steam_root=steam_root)
+
+    assert result is None
+    root = steam_vdf.loads((config_dir / "shortcuts.vdf").read_bytes())
+    assert len(root["shortcuts"]) == 1
+
+
+def test_remove_shortcut_returns_none_when_no_file(tmp_path):
+    steam_root, config_dir = _make_userdata(tmp_path)
+    assert steam_shortcut.remove_shortcut("/anything", steam_root=steam_root) is None

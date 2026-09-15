@@ -16,7 +16,7 @@ from pathlib import Path
 from .fixups import WINE_DLL_OVERRIDES
 
 UMU_BIN = "umu-run"
-INHIBIT_REASON = "bnet-umu: Battle.net session active"
+INHIBIT_REASON = "falafel: Battle.net session active"
 
 
 @dataclass(frozen=True)

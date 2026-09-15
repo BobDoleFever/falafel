@@ -3,7 +3,7 @@
 Doesn't touch any physical controller directly — Steam keeps exclusive raw
 access to it while running, which is why a separate standalone driver would
 fight with Steam. Instead, this checks for the thing a game launched via
-bnet-umu actually reads: Steam Input's synthesized "Microsoft X-Box 360 pad"
+falafel actually reads: Steam Input's synthesized "Microsoft X-Box 360 pad"
 uinput device, which Steam exposes system-wide (not just to Steam-launched
 processes) for any controller it manages — a real Steam Controller
 automatically, or an Xbox/PlayStation/Switch Pro/generic controller if
@@ -11,7 +11,7 @@ automatically, or an Xbox/PlayStation/Switch Pro/generic controller if
 Controller settings (on by default in current Steam).
 
 Confirmed live (2026-09-15) that this virtual device passes straight through
-umu-launcher's pressure-vessel sandbox with no bnet-umu-side wiring needed —
+umu-launcher's pressure-vessel sandbox with no falafel-side wiring needed —
 this module is a diagnostic, not a driver.
 """
 

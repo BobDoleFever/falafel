@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from bnet_umu.core import umu_runner
-from bnet_umu.core.fixups import WINE_DLL_OVERRIDES
+from falafel.core import umu_runner
+from falafel.core.fixups import WINE_DLL_OVERRIDES
 
 
 def test_build_invocation_sets_expected_env():
-    prefix = Path("/home/user/.local/share/bnet-umu/prefix")
+    prefix = Path("/home/user/.local/share/falafel/prefix")
     inv = umu_runner.build_invocation(
         "/path/to/Battle.net.exe",
         ["--extra-arg"],

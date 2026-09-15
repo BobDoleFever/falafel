@@ -1,5 +1,5 @@
 [project]
-name = "bnet-umu"
+name = "falafel-cli"
 version = "0.1.0"
 description = "Standalone, Steam-independent Battle.net launcher for Linux built on umu-launcher"
 readme = "README.md"
@@ -9,17 +9,17 @@ dependencies = [
 ]
 
 [project.scripts]
-bnet-umu = "bnet_umu.cli:main"
+falafel = "falafel.cli:main"
 
 [project.gui-scripts]
-bnet-umu-gui = "bnet_umu.gui.app:main"
+falafel-gui = "falafel.gui.app:main"
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["bnet_umu*"]
+include = ["falafel*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
