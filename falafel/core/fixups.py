@@ -63,3 +63,32 @@ def apply_battlenet_config_tweaks(
 
     config_path.write_text(json.dumps(data, indent=2))
     return data
+
+
+def set_additional_launch_arguments(
+    config_path: Path, product_code: str, args: str
+) -> dict[str, Any]:
+    """Set (or, if `args` is empty, clear) a game's "Additional command line
+    arguments" in Battle.net.config — the same setting exposed in Battle.net's
+    own Game Settings UI (e.g. "-enablerespec" for Diablo II: Resurrected's
+    unlimited single-player respec).
+
+    Confirmed live: setting this through Battle.net's own UI writes exactly
+    `Games.<product_code>.AdditionalLaunchArguments` in this file, alongside
+    BATTLENET_CONFIG_TWEAKS' keys — same file, same merge mechanism.
+    `product_code` is Blizzard's internal product id (D2R's is "osi"), not
+    this project's own game id.
+    """
+    if config_path.exists():
+        data = json.loads(config_path.read_text())
+    else:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        data = {}
+
+    if args:
+        _set_dotted(data, f"Games.{product_code}.AdditionalLaunchArguments", args)
+    else:
+        data.get("Games", {}).get(product_code, {}).pop("AdditionalLaunchArguments", None)
+
+    config_path.write_text(json.dumps(data, indent=2))
+    return data

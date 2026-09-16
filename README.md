@@ -76,6 +76,7 @@ falafel repair           # clear a broken Battle.net Agent and reinstall it
 falafel add-to-steam    # add as a Non-Steam Game shortcut (see below)
 falafel backup-saves d2r  # snapshot saves to a zip (see "Save backups and cloud sync")
 falafel restore-saves d2r --from PATH   # restore a snapshot back
+falafel enable-respec d2r   # unlimited single-player respec (see below)
 ```
 
 Or just run `falafel-gui` for the same actions in a window.
@@ -209,6 +210,26 @@ snapshot onto another one — including a Mac running D2R through
 CrossOver/Whisky, since none of this needs falafel installed there, just
 something that can unzip a file into the right save folder.
 
+## Unlimited single-player respec
+
+```bash
+falafel enable-respec d2r
+falafel disable-respec d2r
+```
+
+Sets (or clears) `Games.osi.AdditionalLaunchArguments` in Battle.net.config
+to `-enablerespec` — the exact same setting exposed in Battle.net's own
+Game Settings UI (gear icon next to Play > Additional command line
+arguments), just scriptable. Single-player/offline only — it doesn't do
+anything for Battle.net-connected ladder play.
+
+One real gotcha, confirmed by testing it both ways: this takes effect the
+next time **Battle.net itself** restarts, not just the next time you click
+Play. Battle.net loads its settings into memory once at startup, so if it's
+already running when you flip this, its own Settings UI will keep showing
+the stale state (and the change won't actually apply) until you quit
+Battle.net entirely and relaunch it — closing just the game isn't enough.
+
 ## Where things live
 
 - Prefix: `~/.local/share/falafel/prefix` (override in Settings / config)
@@ -257,6 +278,12 @@ needed for any of these:
   exits because Battle.net's `Agent.exe` stays resident by design. It now
   launches non-blocking and `prefix.wait_for_battlenet_exe` polls the
   filesystem for completion instead.
+- D2R's Blizzard product code (`Games.osi` in `Battle.net.config`, used for
+  `enable-respec`/`disable-respec`) was confirmed by setting "Additional
+  command line arguments" through Battle.net's own UI and diffing the
+  config file before/after, then round-tripped both directions through a
+  real Battle.net restart to confirm `falafel`'s own writes take effect
+  identically to Battle.net's own UI.
 
 Blizzard doesn't document the `Battle.net.config` schema and it can change
 between client versions, so re-verify `BATTLENET_CONFIG_TWEAKS` if a future

@@ -27,6 +27,10 @@ class GameDef:
     save_glob: str
     # Directory name used when exposing folders under ~/Games/battlenet/.
     external_dirname: str
+    # Blizzard's internal product code (not this project's own `id` above) —
+    # the key under Battle.net.config's "Games" object, e.g. for per-game
+    # settings like AdditionalLaunchArguments. D2R's is "osi".
+    blizzard_product_code: str
 
 
 GAMES: dict[str, GameDef] = {
@@ -38,6 +42,7 @@ GAMES: dict[str, GameDef] = {
         install_glob="Program Files (x86)/Diablo II Resurrected/D2R.exe",
         save_glob="users/*/Saved Games/Diablo II Resurrected",
         external_dirname="d2r",
+        blizzard_product_code="osi",
     ),
 }
 

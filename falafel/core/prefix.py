@@ -76,6 +76,20 @@ def find_battlenet_exe(prefix: Path) -> Path | None:
     return find_first(prefix, BATTLENET_EXE_GLOB)
 
 
+def battlenet_config_path(prefix: Path) -> Path:
+    """Where Battle.net.config lives — "steamuser" is the Wine username
+    umu/Proton prefixes use by convention (verified against a real prefix)."""
+    return (
+        drive_c(prefix)
+        / "users"
+        / "steamuser"
+        / "AppData"
+        / "Roaming"
+        / "Battle.net"
+        / "Battle.net.config"
+    )
+
+
 def wait_for_battlenet_exe(
     prefix: Path,
     timeout: float = 300.0,

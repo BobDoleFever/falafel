@@ -218,3 +218,11 @@ def test_migrate_legacy_data_dir_does_not_overwrite_existing_new_dir(monkeypatch
     assert (new_data / "new-marker.txt").read_text() == "new, already set up"
     assert not (new_data / "old-marker.txt").exists()
     assert messages == []
+
+
+def test_battlenet_config_path():
+    pfx = Path("/some/prefix")
+    assert prefix.battlenet_config_path(pfx) == (
+        pfx / "drive_c" / "users" / "steamuser" / "AppData" / "Roaming"
+        / "Battle.net" / "Battle.net.config"
+    )

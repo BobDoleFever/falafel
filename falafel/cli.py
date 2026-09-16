@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from . import config as config_module
-from .core import cloud_sync, controller, prefix, save_backup, steam_shortcut, umu_bootstrap, umu_runner
+from .core import cloud_sync, controller, fixups, prefix, save_backup, steam_shortcut, umu_bootstrap, umu_runner
 from .core.games import GAMES
 from .core.repair import repair as run_repair
 from .core.setup_flow import run_setup
@@ -219,6 +219,40 @@ def cmd_cloud_pull(args: argparse.Namespace) -> int:
     return result.returncode
 
 
+def cmd_enable_respec(args: argparse.Namespace) -> int:
+    cfg = config_module.load()
+    game = GAMES.get(args.game)
+    if game is None:
+        print(f"Unknown game id: {args.game}", file=sys.stderr)
+        return 1
+
+    config_path = prefix.battlenet_config_path(cfg.prefix_path)
+    fixups.set_additional_launch_arguments(config_path, game.blizzard_product_code, "-enablerespec")
+    print(
+        f"Enabled unlimited respec for {game.name} (single-player/offline only — "
+        "this doesn't do anything on Battle.net-connected ladder play). Takes "
+        "effect the next time Battle.net itself (re)starts — quit it fully if "
+        "it's already running, not just the game; no need to log in again."
+    )
+    return 0
+
+
+def cmd_disable_respec(args: argparse.Namespace) -> int:
+    cfg = config_module.load()
+    game = GAMES.get(args.game)
+    if game is None:
+        print(f"Unknown game id: {args.game}", file=sys.stderr)
+        return 1
+
+    config_path = prefix.battlenet_config_path(cfg.prefix_path)
+    fixups.set_additional_launch_arguments(config_path, game.blizzard_product_code, "")
+    print(
+        f"Disabled unlimited respec for {game.name}. Takes effect the next "
+        "time Battle.net itself (re)starts."
+    )
+    return 0
+
+
 def cmd_repair(args: argparse.Namespace) -> int:
     cfg = config_module.load()
     removed = run_repair(cfg.prefix_path)
@@ -319,6 +353,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--path", default=None, help="Path within the remote (default: falafel-saves/<game>)"
     )
     cloud_pull.set_defaults(func=cmd_cloud_pull)
+
+    enable_respec = subparsers.add_parser(
+        "enable-respec",
+        help="Enable unlimited single-player respec (-enablerespec, via Battle.net.config)",
+    )
+    enable_respec.add_argument("game", nargs="?", default="d2r", choices=list(GAMES.keys()))
+    enable_respec.set_defaults(func=cmd_enable_respec)
+
+    disable_respec = subparsers.add_parser(
+        "disable-respec", help="Turn unlimited single-player respec back off"
+    )
+    disable_respec.add_argument("game", nargs="?", default="d2r", choices=list(GAMES.keys()))
+    disable_respec.set_defaults(func=cmd_disable_respec)
 
     return parser
 

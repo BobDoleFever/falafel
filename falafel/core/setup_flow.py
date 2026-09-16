@@ -53,18 +53,7 @@ def run_setup(
         )
         return False
 
-    # "steamuser" is the Wine username umu/Proton prefixes use by
-    # convention; verify against the real prefix if this doesn't match
-    # after a first install.
-    config_path = (
-        bnet_exe.parent.parent.parent
-        / "users"
-        / "steamuser"
-        / "AppData"
-        / "Roaming"
-        / "Battle.net"
-        / "Battle.net.config"
-    )
+    config_path = prefix.battlenet_config_path(prefix_path)
     log("Applying Wine/Battle.net stability tweaks ...")
     try:
         fixups.apply_battlenet_config_tweaks(config_path)
