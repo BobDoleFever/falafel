@@ -107,6 +107,20 @@ def find_save_dir(prefix: Path, game: GameDef) -> Path | None:
     return find_first(prefix, game.save_glob)
 
 
+def resolve_save_dir(prefix: Path, game: GameDef) -> Path:
+    """Where this game's save dir is, or would be created.
+
+    Falls back to the "steamuser" Wine username convention (already relied
+    on elsewhere, e.g. setup_flow's Battle.net.config path) when the save
+    dir doesn't exist yet — e.g. restoring saves onto a fresh install that's
+    never actually launched the game, so nothing has created the folder.
+    """
+    existing = find_save_dir(prefix, game)
+    if existing is not None:
+        return existing
+    return drive_c(prefix) / game.save_glob.replace("*", "steamuser", 1)
+
+
 def expose_folder(source: Path, target: Path) -> Path:
     """Symlink target -> source, creating target's parent dir as needed.
 

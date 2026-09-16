@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from . import config as config_module
-from .core import controller, prefix, steam_shortcut, umu_bootstrap, umu_runner
+from .core import cloud_sync, controller, prefix, save_backup, steam_shortcut, umu_bootstrap, umu_runner
 from .core.games import GAMES
 from .core.repair import repair as run_repair
 from .core.setup_flow import run_setup
@@ -117,6 +117,108 @@ def cmd_add_to_steam(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_backup_saves(args: argparse.Namespace) -> int:
+    cfg = config_module.load()
+    game = GAMES.get(args.game)
+    if game is None:
+        print(f"Unknown game id: {args.game}", file=sys.stderr)
+        return 1
+
+    try:
+        zip_path = save_backup.backup_saves(game, cfg.prefix_path)
+    except save_backup.NoSaveDataError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    print(f"Backed up {game.name} saves to {zip_path}")
+    return 0
+
+
+def cmd_restore_saves(args: argparse.Namespace) -> int:
+    cfg = config_module.load()
+    game = GAMES.get(args.game)
+    if game is None:
+        print(f"Unknown game id: {args.game}", file=sys.stderr)
+        return 1
+
+    try:
+        result = save_backup.restore_saves(
+            game, cfg.prefix_path, from_dir=Path(args.from_path), force=args.force
+        )
+    except save_backup.NewerLocalSavesError as exc:
+        print(f"Refusing to restore: {exc}", file=sys.stderr)
+        print(
+            "Your current saves look newer than this backup. Pass --force to "
+            "restore anyway — your current saves are always backed up first "
+            "regardless, so this is still reversible.",
+            file=sys.stderr,
+        )
+        return 1
+    except (FileNotFoundError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    print(f"Restored {game.name} saves from {args.from_path} to {result.restored_to}")
+    if result.pre_restore_backup:
+        print(f"Backed up your previous saves to {result.pre_restore_backup} first.")
+    return 0
+
+
+def _cloud_backup_dir(game_id: str) -> Path:
+    return save_backup.default_backup_root() / game_id
+
+
+def cmd_cloud_setup(args: argparse.Namespace) -> int:
+    if not cloud_sync.rclone_available():
+        print(
+            "rclone not found. Install it first:\n"
+            "  Arch:          sudo pacman -S rclone\n"
+            "  Fedora:        sudo dnf install rclone\n"
+            "  Debian/Ubuntu: sudo apt install rclone",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(
+        "Launching `rclone config` — set up a remote for Google Drive, iCloud "
+        "Drive, or anything else rclone supports. You'll log in through "
+        "rclone's own flow; falafel never sees your credentials."
+    )
+    return cloud_sync.run_rclone_config()
+
+
+def cmd_cloud_push(args: argparse.Namespace) -> int:
+    game = GAMES.get(args.game)
+    if game is None:
+        print(f"Unknown game id: {args.game}", file=sys.stderr)
+        return 1
+    if not cloud_sync.rclone_available():
+        print("rclone not found — run `falafel cloud-setup` first.", file=sys.stderr)
+        return 1
+
+    local_dir = _cloud_backup_dir(game.id)
+    remote_path = args.path or f"falafel-saves/{game.id}"
+    print(f"Pushing {local_dir} -> {args.remote}:{remote_path} ...")
+    result = cloud_sync.push(local_dir, args.remote, remote_path)
+    return result.returncode
+
+
+def cmd_cloud_pull(args: argparse.Namespace) -> int:
+    game = GAMES.get(args.game)
+    if game is None:
+        print(f"Unknown game id: {args.game}", file=sys.stderr)
+        return 1
+    if not cloud_sync.rclone_available():
+        print("rclone not found — run `falafel cloud-setup` first.", file=sys.stderr)
+        return 1
+
+    local_dir = _cloud_backup_dir(game.id)
+    remote_path = args.path or f"falafel-saves/{game.id}"
+    print(f"Pulling {args.remote}:{remote_path} -> {local_dir} ...")
+    result = cloud_sync.pull(args.remote, remote_path, local_dir)
+    return result.returncode
+
+
 def cmd_repair(args: argparse.Namespace) -> int:
     cfg = config_module.load()
     removed = run_repair(cfg.prefix_path)
@@ -173,6 +275,50 @@ def build_parser() -> argparse.ArgumentParser:
         "--icon", default=None, help="Path to an icon/logo image file to use"
     )
     add_to_steam.set_defaults(func=cmd_add_to_steam)
+
+    backup_saves = subparsers.add_parser(
+        "backup-saves", help="Snapshot a game's saves to a timestamped zip archive"
+    )
+    backup_saves.add_argument("game", nargs="?", default="d2r", choices=list(GAMES.keys()))
+    backup_saves.set_defaults(func=cmd_backup_saves)
+
+    restore_saves = subparsers.add_parser(
+        "restore-saves", help="Restore saves from a backup zip (or directory)"
+    )
+    restore_saves.add_argument("game", nargs="?", default="d2r", choices=list(GAMES.keys()))
+    restore_saves.add_argument(
+        "--from", dest="from_path", required=True, help="Path to a backup .zip or directory"
+    )
+    restore_saves.add_argument(
+        "--force",
+        action="store_true",
+        help="Restore even if local saves look newer than the backup (still backs them up first)",
+    )
+    restore_saves.set_defaults(func=cmd_restore_saves)
+
+    subparsers.add_parser(
+        "cloud-setup", help="Set up a cloud remote (Google Drive, iCloud Drive, etc.) via rclone"
+    ).set_defaults(func=cmd_cloud_setup)
+
+    cloud_push = subparsers.add_parser(
+        "cloud-push", help="Upload local save backups to a cloud remote"
+    )
+    cloud_push.add_argument("game", nargs="?", default="d2r", choices=list(GAMES.keys()))
+    cloud_push.add_argument("--remote", required=True, help="rclone remote name (see `rclone listremotes`)")
+    cloud_push.add_argument(
+        "--path", default=None, help="Path within the remote (default: falafel-saves/<game>)"
+    )
+    cloud_push.set_defaults(func=cmd_cloud_push)
+
+    cloud_pull = subparsers.add_parser(
+        "cloud-pull", help="Download save backups from a cloud remote"
+    )
+    cloud_pull.add_argument("game", nargs="?", default="d2r", choices=list(GAMES.keys()))
+    cloud_pull.add_argument("--remote", required=True, help="rclone remote name (see `rclone listremotes`)")
+    cloud_pull.add_argument(
+        "--path", default=None, help="Path within the remote (default: falafel-saves/<game>)"
+    )
+    cloud_pull.set_defaults(func=cmd_cloud_pull)
 
     return parser
 

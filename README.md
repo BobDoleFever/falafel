@@ -32,6 +32,8 @@ risk profile.
   the official upstream binary directly rather than vendoring it in this repo.
 - Optional: `xdotool`, for hands-free setup (see below). Without it, setup
   falls back to asking you to click through the installer manually.
+- Optional: `rclone`, only for `cloud-push`/`cloud-pull`/`cloud-setup` (see
+  "Save backups and cloud sync" below). Nothing else needs it.
 
 ## Install
 
@@ -72,6 +74,8 @@ falafel launch          # launch Battle.net; install Diablo II: Resurrected
 falafel open-saves d2r  # open the exposed save folder in your file manager
 falafel repair           # clear a broken Battle.net Agent and reinstall it
 falafel add-to-steam    # add as a Non-Steam Game shortcut (see below)
+falafel backup-saves d2r  # snapshot saves to a zip (see "Save backups and cloud sync")
+falafel restore-saves d2r --from PATH   # restore a snapshot back
 ```
 
 Or just run `falafel-gui` for the same actions in a window.
@@ -154,6 +158,56 @@ The shortcut points at `falafel` itself (running `launch`), not at
 Battle.net.exe directly — pointing at the Windows exe would make Steam
 apply its own Proton translation and create a *second*, separate prefix
 under `steamapps/compatdata/` instead of reusing the one this tool manages.
+
+## Save backups and cloud sync
+
+```bash
+falafel backup-saves d2r                              # snapshot to a timestamped zip
+falafel restore-saves d2r --from PATH/TO/BACKUP.zip    # restore one back
+falafel cloud-setup                                    # rclone config, interactive
+falafel cloud-push d2r --remote gdrive                 # upload your backups
+falafel cloud-pull d2r --remote gdrive                 # download backups from elsewhere
+```
+
+Not a sync engine, and deliberately so — D2R saves can't be merged, so
+pretending to solve real-time multi-machine sync would just mean silently
+picking a loser when the same character gets played on two machines. Instead:
+
+- **`backup-saves`** snapshots the current save folder to a single verified
+  zip archive at `~/falafel-save-backups/<game>/<timestamp>.zip`. Never
+  overwrites a previous snapshot — every call gets its own timestamp, so
+  your backup history just accumulates.
+- **`restore-saves --from PATH`** applies a snapshot (a zip, or a plain
+  directory) back into the live save folder. It always backs up whatever's
+  currently there first, as its own fresh zip — restoring is never a
+  one-way door. It also refuses to proceed if any local save file looks
+  newer than what's in the backup being restored (i.e. you played since
+  that snapshot was taken), telling you exactly which files, unless you
+  pass `--force` — and even then, your current saves get backed up first
+  regardless, so it stays reversible.
+- **`cloud-push`/`cloud-pull`** move your local backup *archives* to/from a
+  cloud remote via [rclone](https://rclone.org) — Google Drive, iCloud
+  Drive (rclone has an official backend for both), Dropbox, or anything
+  else rclone supports. `cloud-setup` just launches `rclone config` so you
+  log into your own cloud account through rclone's own OAuth/2FA flow —
+  falafel never sees or touches your credentials. Both commands use
+  `rclone copy`, never `rclone sync`, specifically because copy only adds
+  or updates files and never deletes anything on either side — so even a
+  redundant or out-of-order push/pull can't lose a backup, only leave an
+  extra one lying around.
+
+Every zip is written to a temp path and fully verified (every source file
+present, every entry's CRC checked) before being atomically renamed into
+place, so a crash mid-backup can never leave a corrupt file where a real
+backup is expected — and the same CRC check runs again on restore, before
+anything gets extracted.
+
+This is on a second machine as much as it's useful on one: point
+`cloud-push` at a shared remote from each machine you play on, and
+`cloud-pull` + `restore-saves` (with its safety check) is how you bring a
+snapshot onto another one — including a Mac running D2R through
+CrossOver/Whisky, since none of this needs falafel installed there, just
+something that can unzip a file into the right save folder.
 
 ## Where things live
 
